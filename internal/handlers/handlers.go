@@ -27,23 +27,35 @@ func HealthCheck(c *gin.Context) {
 	}
 
 	// Check database connection
-	sqlDB, err := database.GetDB().DB()
-	if err != nil || sqlDB.Ping() != nil {
-		response.Database = "disconnected"
-		response.Status = "degraded"
+	db := database.GetDB()
+	if db != nil {
+		sqlDB, err := db.DB()
+		if err != nil || sqlDB.Ping() != nil {
+			response.Database = "disconnected"
+			response.Status = "degraded"
+		} else {
+			response.Database = "connected"
+		}
 	} else {
-		response.Database = "connected"
+		response.Database = "not initialized"
+		response.Status = "degraded"
 	}
 
 	// Check redis connection
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
+	redisClient := cache.GetClient()
+	if redisClient != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
-	if err := cache.GetClient().Ping(ctx).Err(); err != nil {
-		response.Redis = "disconnected"
-		response.Status = "degraded"
+		if err := redisClient.Ping(ctx).Err(); err != nil {
+			response.Redis = "disconnected"
+			response.Status = "degraded"
+		} else {
+			response.Redis = "connected"
+		}
 	} else {
-		response.Redis = "connected"
+		response.Redis = "not initialized"
+		response.Status = "degraded"
 	}
 
 	if response.Status == "ok" {

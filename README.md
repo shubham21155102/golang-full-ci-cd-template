@@ -1,0 +1,1 @@
+# golang-full-ci-cd-template
